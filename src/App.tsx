@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { ThemeProvider, createTheme, responsiveFontSizes } from '@mui/material/styles'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
@@ -63,25 +63,65 @@ type Game = {
 type GameForm = Omit<Game, 'id'>
 
 const STORAGE_KEY = 'games-v2'
-const CARD_W = 250
-const CARD_H = 375
+
+// Card size and cover-flow settings
+const CARD_W = 280
+const CARD_H = 420
+const SPACING = 170 // horizontal distance between cards (smaller = more overlap)
+const DEPTH = 140 // how far side cards go back
+const ROTATE = 40 // how much side cards turn
+const VISIBLE_SIDE = 2 // cards shown on each side
+
+// Colors
 const GOLD = '#c9a227'
+const GOLD_GRADIENT = 'linear-gradient(135deg, #f7e8a4 0%, #d4af37 40%, #a67c1b 75%, #f1d88a 100%)'
+const DARK_TEXT = '#1a1a1a'
 
-// Dark theme with a gold accent
-const theme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: { main: GOLD },
-    secondary: { main: '#8e8e93' },
-  },
-})
+// Typography: Cinzel for titles (English), Shippori Mincho for Japanese titles, Noto Sans JP for body
+const HEADING_FONT = '"Cinzel", "Shippori Mincho", serif'
+const BODY_FONT = '"Noto Sans JP", "Helvetica", "Arial", sans-serif'
 
-// Frosted glass look, reused on panels
+const theme = responsiveFontSizes(
+  createTheme({
+    palette: {
+      mode: 'dark',
+      primary: { main: GOLD, contrastText: DARK_TEXT },
+      secondary: { main: '#8e8e93' },
+      background: { default: '#0b0b0b', paper: '#161616' },
+    },
+    typography: {
+      fontFamily: BODY_FONT,
+      h1: { fontFamily: HEADING_FONT, fontWeight: 700, letterSpacing: '0.04em' },
+      h2: { fontFamily: HEADING_FONT, fontWeight: 700, letterSpacing: '0.04em' },
+      h3: { fontFamily: HEADING_FONT, fontWeight: 700, letterSpacing: '0.04em' },
+      h4: { fontFamily: HEADING_FONT, fontWeight: 700, letterSpacing: '0.05em' },
+      h5: { fontFamily: HEADING_FONT, fontWeight: 700, letterSpacing: '0.05em' },
+      h6: { fontFamily: HEADING_FONT, fontWeight: 700, letterSpacing: '0.06em' },
+      subtitle1: { fontFamily: HEADING_FONT, fontWeight: 500, letterSpacing: '0.05em' },
+      body1: { fontWeight: 400 },
+      body2: { fontWeight: 400, letterSpacing: '0.02em' },
+      button: { fontWeight: 700, letterSpacing: '0.08em' },
+      caption: { letterSpacing: '0.06em' },
+    },
+    shape: { borderRadius: 12 },
+  }),
+)
+
+// Frosted glass panels
 const glass = {
   bgcolor: 'rgba(255,255,255,0.05)',
   backgroundImage: 'none',
-  backdropFilter: 'blur(12px)',
+  backdropFilter: 'blur(14px)',
   border: '1px solid rgba(255,255,255,0.1)',
+  boxShadow: '0 20px 40px -20px rgba(0,0,0,0.8)',
+}
+
+// Gold gradient text
+const goldText = {
+  backgroundImage: GOLD_GRADIENT,
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  color: 'transparent',
 }
 
 const genres = ['アクション', 'オープンワールド', 'レース', 'RPG', 'パズル', 'シューティング', '格闘', 'スポーツ', 'その他']
@@ -141,19 +181,21 @@ function App() {
     .filter((g) => g.rating >= minRating)
     .sort((a, b) => (sortKey === 'rating' ? b.rating - a.rating : a.title.localeCompare(b.title)))
 
-  // Carousel math
+  // Cover-flow math: each card's position relative to the selected one (wraps around like a circle)
   const count = visibleGames.length
-  const angle = count > 0 ? 360 / count : 0
-  const radius = count <= 1 ? 0 : Math.round(CARD_W / 2 / Math.tan(Math.PI / count)) + 70
   const selectedIndex = count === 0 ? 0 : ((current % count) + count) % count
   const selected = visibleGames[selectedIndex]
 
+  const offsetOf = (i: number) => {
+    let d = i - selectedIndex
+    if (d > count / 2) d -= count
+    if (d < -count / 2) d += count
+    return d
+  }
+
   const goTo = (i: number) => {
     if (count === 0) return
-    let diff = i - selectedIndex
-    if (diff > count / 2) diff -= count
-    if (diff < -count / 2) diff += count
-    setCurrent(current + diff)
+    setCurrent(current + offsetOf(i))
   }
 
   const openAdd = () => {
@@ -205,11 +247,11 @@ function App() {
     position: 'absolute',
     top: '50%',
     transform: 'translateY(-50%)',
-    zIndex: 10,
+    zIndex: 200,
     color: 'white',
     bgcolor: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.15)',
-    backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(255,255,255,0.18)',
+    backdropFilter: 'blur(10px)',
     '&:hover': { bgcolor: 'rgba(255,255,255,0.18)' },
   } as const
 
@@ -219,22 +261,24 @@ function App() {
         sx={{
           minHeight: '100vh',
           color: 'text.primary',
-          background: 'radial-gradient(ellipse at top, #3a3a3a 0%, #1c1c1c 45%, #0b0b0b 100%)',
+          fontFamily: BODY_FONT,
+          background: 'radial-gradient(ellipse at 50% 0%, #3d3a33 0%, #1b1b1b 45%, #0a0a0a 100%)',
         }}
       >
+        {/* Header */}
         <AppBar
           position="sticky"
           elevation={0}
           sx={{
-            bgcolor: 'rgba(15,15,15,0.6)',
+            bgcolor: 'rgba(12,12,12,0.6)',
             backgroundImage: 'none',
-            backdropFilter: 'blur(12px)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(14px)',
+            borderBottom: '1px solid rgba(201,162,39,0.25)',
           }}
         >
           <Toolbar>
-            <SportsEsportsIcon sx={{ mr: 1, color: GOLD }} />
-            <Typography variant="h6" sx={{ flexGrow: 1, letterSpacing: 2 }}>
+            <SportsEsportsIcon sx={{ mr: 1.5, color: GOLD }} />
+            <Typography variant="h6" sx={{ flexGrow: 1, ...goldText }}>
               ゲーム管理アプリ
             </Typography>
             <Tooltip title="登録ゲーム数">
@@ -245,9 +289,17 @@ function App() {
           </Toolbar>
         </AppBar>
 
-        <div className="max-w-6xl mx-auto p-4">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          {/* Page heading */}
+          <Typography variant="h4" sx={{ textAlign: 'center', mb: 0.5, ...goldText }}>
+            Game Collection
+          </Typography>
+          <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', mb: 3 }}>
+            お気に入りのゲームを管理しよう
+          </Typography>
+
           {/* Controls */}
-          <Paper sx={{ ...glass, p: 2, mb: 3, borderRadius: 3 }}>
+          <Paper sx={{ ...glass, p: 2.5, mb: 3, borderRadius: 4 }}>
             <Stack spacing={2}>
               <TextField
                 label="ゲーム名で検索"
@@ -256,7 +308,12 @@ function App() {
                 size="small"
                 fullWidth
               />
-              <Tabs value={tab} onChange={(_e, v: Status) => setTab(v)} variant="fullWidth">
+              <Tabs
+                value={tab}
+                onChange={(_e, v: Status) => setTab(v)}
+                variant="fullWidth"
+                sx={{ '& .MuiTabs-indicator': { backgroundImage: GOLD_GRADIENT, height: 3 } }}
+              >
                 <Tab label="すべて" value="all" />
                 <Tab label="プレイ中" value="playing" />
                 <Tab label="クリア済み" value="cleared" />
@@ -278,7 +335,9 @@ function App() {
                   label="お気に入りのみ"
                 />
                 <Box sx={{ flexGrow: 1, px: 1 }}>
-                  <Typography variant="caption">最低評価: {minRating}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    最低評価: {minRating}
+                  </Typography>
                   <Slider
                     value={minRating}
                     onChange={(_e, v) => setMinRating(v as number)}
@@ -291,10 +350,20 @@ function App() {
                 </Box>
               </Stack>
               <Box>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   クリア率 {clearedCount} / {games.length}
                 </Typography>
-                <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
+                <LinearProgress
+                  variant="determinate"
+                  value={progress}
+                  sx={{
+                    mt: 0.5,
+                    height: 8,
+                    borderRadius: 4,
+                    bgcolor: 'rgba(255,255,255,0.08)',
+                    '& .MuiLinearProgress-bar': { backgroundImage: GOLD_GRADIENT, borderRadius: 4 },
+                  }}
+                />
               </Box>
             </Stack>
           </Paper>
@@ -305,20 +374,20 @@ function App() {
             </Alert>
           )}
 
-          {/* 3D carousel */}
+          {/* Cover-flow carousel */}
           {count > 0 && (
-            <Box sx={{ position: 'relative', height: { xs: 380, sm: 470, md: 540 }, overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', height: { xs: 420, sm: 540, md: 620 }, overflow: 'hidden' }}>
               {/* Floor shadow */}
               <Box
                 sx={{
                   position: 'absolute',
                   left: '50%',
-                  bottom: { xs: 30, md: 20 },
-                  width: '70%',
-                  height: 60,
+                  bottom: { xs: 40, md: 40 },
+                  width: '75%',
+                  height: 70,
                   transform: 'translateX(-50%)',
-                  background: 'radial-gradient(ellipse, rgba(0,0,0,0.75) 0%, transparent 70%)',
-                  filter: 'blur(10px)',
+                  background: 'radial-gradient(ellipse, rgba(0,0,0,0.8) 0%, transparent 70%)',
+                  filter: 'blur(12px)',
                 }}
               />
 
@@ -329,22 +398,18 @@ function App() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  perspective: '1400px',
-                  transform: { xs: 'scale(0.62)', sm: 'scale(0.82)', md: 'none' },
+                  perspective: '1200px',
+                  transform: { xs: 'scale(0.6)', sm: 'scale(0.8)', md: 'none' },
                 }}
               >
-                <Box
-                  sx={{
-                    position: 'relative',
-                    width: CARD_W,
-                    height: CARD_H,
-                    transformStyle: 'preserve-3d',
-                    transform: `translateZ(${-radius}px) rotateY(${-current * angle}deg)`,
-                    transition: 'transform 0.7s cubic-bezier(0.22, 1, 0.36, 1)',
-                  }}
-                >
+                <Box sx={{ position: 'relative', width: CARD_W, height: CARD_H, transformStyle: 'preserve-3d' }}>
                   {visibleGames.map((game, i) => {
-                    const isSelected = i === selectedIndex
+                    const offset = offsetOf(i)
+                    const abs = Math.abs(offset)
+                    const isSelected = offset === 0
+                    const visible = abs <= VISIBLE_SIDE
+                    const turn = offset === 0 ? 0 : offset > 0 ? -ROTATE : ROTATE
+
                     return (
                       <Card
                         key={game.id}
@@ -352,13 +417,21 @@ function App() {
                           position: 'absolute',
                           inset: 0,
                           borderRadius: 4,
-                          backfaceVisibility: 'hidden',
-                          transform: `rotateY(${i * angle}deg) translateZ(${radius}px)`,
-                          border: isSelected ? `2px solid ${GOLD}` : '1px solid rgba(255,255,255,0.12)',
+                          overflow: 'hidden',
+                          transform: `translateX(${offset * SPACING}px) translateZ(${-abs * DEPTH}px) rotateY(${turn}deg)`,
+                          zIndex: 100 - abs,
+                          opacity: visible ? 1 : 0,
+                          pointerEvents: visible ? 'auto' : 'none',
+                          filter: isSelected ? 'none' : 'brightness(0.65)',
+                          transition: 'transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s, filter 0.5s',
+                          border: isSelected ? '2px solid transparent' : '1px solid rgba(255,255,255,0.18)',
+                          background: isSelected
+                            ? `linear-gradient(#111, #111) padding-box, ${GOLD_GRADIENT} border-box`
+                            : '#111',
                           boxShadow: isSelected
-                            ? `0 45px 60px -20px rgba(0,0,0,0.95), 0 0 30px rgba(201,162,39,0.35)`
-                            : '0 35px 45px -20px rgba(0,0,0,0.85)',
-                          transition: 'box-shadow 0.4s, border 0.4s',
+                            ? '0 50px 70px -25px rgba(0,0,0,0.95), 0 0 40px rgba(212,175,55,0.35)'
+                            : '0 40px 50px -25px rgba(0,0,0,0.9)',
+                          WebkitBoxReflect: 'below 10px linear-gradient(transparent 75%, rgba(255,255,255,0.18))',
                         }}
                       >
                         <CardActionArea onClick={() => goTo(i)} sx={{ height: '100%', position: 'relative' }}>
@@ -379,26 +452,39 @@ function App() {
                                 background: 'linear-gradient(135deg, #2c2c2e, #0b0b0b)',
                               }}
                             >
-                              <Avatar sx={{ width: 80, height: 80, fontSize: 36, bgcolor: GOLD }}>
+                              <Avatar sx={{ width: 90, height: 90, fontSize: 40, backgroundImage: GOLD_GRADIENT, color: DARK_TEXT }}>
                                 {game.title.charAt(0)}
                               </Avatar>
                             </Box>
                           )}
+
+                          {/* Glass shine */}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              inset: 0,
+                              pointerEvents: 'none',
+                              background:
+                                'linear-gradient(125deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 28%, transparent 55%)',
+                            }}
+                          />
+
+                          {/* Title and stars */}
                           <Box
                             sx={{
                               position: 'absolute',
                               left: 0,
                               right: 0,
                               bottom: 0,
-                              p: 2,
-                              pt: 6,
+                              p: 2.5,
+                              pt: 8,
                               background: 'linear-gradient(transparent, rgba(0,0,0,0.92))',
                             }}
                           >
-                            <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold', lineHeight: 1.2 }}>
+                            <Typography variant="h6" sx={{ color: 'white', lineHeight: 1.25 }}>
                               {game.title}
                             </Typography>
-                            <Rating value={game.rating} readOnly size="small" sx={{ mt: 0.5 }} />
+                            <Rating value={game.rating} readOnly size="small" sx={{ mt: 0.75 }} />
                           </Box>
                         </CardActionArea>
                       </Card>
@@ -417,22 +503,26 @@ function App() {
           )}
 
           {count > 0 && (
-            <Typography variant="body2" sx={{ textAlign: 'center', mb: 2, color: 'text.secondary', letterSpacing: 2 }}>
+            <Typography variant="caption" component="p" sx={{ textAlign: 'center', mb: 3, color: 'text.secondary', letterSpacing: '0.3em' }}>
               {selectedIndex + 1} / {count}
             </Typography>
           )}
 
           {/* Selected game details */}
           {selected && (
-            <Paper sx={{ ...glass, p: 2.5, maxWidth: 600, mx: 'auto', mb: 10, borderRadius: 3 }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
+            <Paper sx={{ ...glass, p: 3, maxWidth: 640, mx: 'auto', mb: 12, borderRadius: 4 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'center' } }}>
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="h5">{selected.title}</Typography>
-                  <Chip label={selected.genre} color="primary" size="small" sx={{ mt: 0.5 }} />
+                  <Chip
+                    label={selected.genre}
+                    size="small"
+                    sx={{ mt: 1, backgroundImage: GOLD_GRADIENT, color: DARK_TEXT, fontWeight: 700 }}
+                  />
                 </Box>
                 <Rating value={selected.rating} readOnly />
               </Stack>
-              <Divider sx={{ my: 1.5 }} />
+              <Divider sx={{ my: 2, borderColor: 'rgba(201,162,39,0.25)' }} />
               <Stack direction="row" sx={{ alignItems: 'center' }}>
                 <FormControlLabel
                   control={<Checkbox checked={selected.cleared} onChange={() => toggleCleared(selected.id)} />}
@@ -460,13 +550,29 @@ function App() {
         </div>
 
         <Tooltip title="ゲームを追加">
-          <Fab color="primary" onClick={openAdd} sx={{ position: 'fixed', bottom: 24, right: 24 }}>
+          <Fab
+            onClick={openAdd}
+            sx={{
+              position: 'fixed',
+              bottom: 24,
+              right: 24,
+              backgroundImage: GOLD_GRADIENT,
+              color: DARK_TEXT,
+              boxShadow: '0 10px 30px rgba(212,175,55,0.35)',
+            }}
+          >
             <AddIcon />
           </Fab>
         </Tooltip>
 
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
-          <DialogTitle>{editingId === null ? 'ゲームを追加' : 'ゲームを編集'}</DialogTitle>
+        <Dialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          fullWidth
+          maxWidth="xs"
+          slotProps={{ paper: { sx: { ...glass, bgcolor: 'rgba(22,22,22,0.85)', borderRadius: 4 } } }}
+        >
+          <DialogTitle sx={goldText}>{editingId === null ? 'ゲームを追加' : 'ゲームを編集'}</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
@@ -499,7 +605,9 @@ function App() {
                 fullWidth
               />
               <Box>
-                <Typography variant="body2">評価</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  評価
+                </Typography>
                 <Rating value={form.rating} onChange={(_e, v) => setForm({ ...form, rating: v ?? 0 })} />
               </Box>
               <FormControlLabel
@@ -514,7 +622,12 @@ function App() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDialogOpen(false)}>キャンセル</Button>
-            <Button variant="contained" onClick={handleSave} disabled={form.title.trim() === ''}>
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={form.title.trim() === ''}
+              sx={{ backgroundImage: GOLD_GRADIENT, color: DARK_TEXT }}
+            >
               保存
             </Button>
           </DialogActions>
